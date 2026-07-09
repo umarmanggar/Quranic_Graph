@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+
+# Abaikan isi data, tapi pertahankan struktur foldernya
+data/**
+!data/**/
+!data/**/.gitkeep
