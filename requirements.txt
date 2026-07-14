@@ -1,2 +1,5 @@
 psycopg[binary]
 python-dotenv
+beautifulsoup4
+qalsadi
+tqdm

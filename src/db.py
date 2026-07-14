@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 import psycopg
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -28,7 +29,6 @@ def graph_connection():
     conn = psycopg.connect(_dsn())
     try:
         with conn.cursor() as cur:
-            cur.execute("LOAD 'age';")
             cur.execute('SET search_path = ag_catalog, "$user", public;')
         conn.commit()
         yield conn
@@ -45,15 +45,13 @@ def run(conn, query):
 def run_batch(conn, query, rows, size=500):
     total = len(rows)
     with conn.cursor() as cur:
-        for start in range(0, total, size):
+        for start in tqdm(range(0, total, size), total=-(-total // size), unit="batch", leave=False):
             chunk = rows[start:start + size]
             cur.execute(
                 f"SELECT * FROM cypher('{GRAPH}', $$ {query} $$, %s::agtype) AS (v agtype);",
                 (json.dumps({"rows": chunk}),),
             )
             conn.commit()
-            print(f"  {min(start + size, total)}/{total}", end="\r")
-    print()
 
 
 def sqlite_rows(filename, query):
