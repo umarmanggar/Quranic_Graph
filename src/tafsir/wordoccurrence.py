@@ -3,11 +3,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import re
+import json
 
 import qalsadi.lemmatizer
 from tqdm import tqdm
 
-from db import graph_connection, run_batch
+from db import graph_connection, run_batch, GRAPH
 from commentary import build_tafsir_rows
 
 TOKEN_TRIM = re.compile(r"^[\W\d]+|[\W\d]+$")
@@ -31,7 +32,7 @@ LINK_LEMMA = """
 UNWIND $rows AS row
 MATCH (w:TafsirWordOccurrence {word_occurrence_id: row.word_occurrence_id})
 MATCH (l:TafsirLemma {lemma_id: row.lemma_id})
-CREATE (w)-[:HAS_LEMMA]->(l)
+CREATE (w)-[:HAS_TAFSIR_LEMMA]->(l)
 """
 
 
@@ -44,12 +45,27 @@ def tokenize(text):
     return tokens
 
 
-def main():
-    tafsir_rows, _ = build_tafsir_rows()
-    lemmer = qalsadi.lemmatizer.Lemmatizer()
+def existing_lemmas():
+    with graph_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT * FROM cypher('{GRAPH}', $$ MATCH (l:TafsirLemma) "
+                f"RETURN l.text, l.lemma_id $$) AS (t agtype, i agtype);"
+            )
+            return {json.loads(t): json.loads(i) for t, i in cur.fetchall()}
 
-    words, lemma_links = [], []
-    lemma_id_of = {}
+
+def next_index(lemma_ids):
+    n = 0
+    for lid in lemma_ids:
+        if isinstance(lid, str) and lid.startswith("L") and lid[1:].isdigit():
+            n = max(n, int(lid[1:]) + 1)
+    return n
+
+
+def build_rows(tafsir_rows, lemma_id_of, counter):
+    lemmer = qalsadi.lemmatizer.Lemmatizer()
+    words, lemma_links, new_lemmas = [], [], []
     fallback_count = 0
 
     for r in tqdm(tafsir_rows, desc="lemmatizing", unit="block"):
@@ -60,8 +76,7 @@ def main():
         if not tokens:
             continue
 
-        joined = " ".join(tokens)
-        results = lemmer.lemmatize_text(joined, all=True)
+        results = lemmer.lemmatize_text(" ".join(tokens), all=True)
         if len(results) != len(tokens):
             fallback_count += 1
             results = [lemmer.lemmatize(tok, all=True) for tok in tokens]
@@ -74,26 +89,38 @@ def main():
                 "position_in_tafsir": position,
                 "tafsir_id": r["tafsir_id"],
             })
-            if candidates:
-                lemma_text = candidates[0]
-                if lemma_text not in lemma_id_of:
-                    lemma_id_of[lemma_text] = f"L{len(lemma_id_of)}"
-                lemma_links.append({
-                    "word_occurrence_id": word_occurrence_id,
-                    "lemma_id": lemma_id_of[lemma_text],
-                })
+            if not candidates:
+                continue
+            lemma_text = candidates[0]
+            if lemma_text not in lemma_id_of:
+                lemma_id_of[lemma_text] = f"L{counter}"
+                counter += 1
+                new_lemmas.append({"lemma_id": lemma_id_of[lemma_text], "text": lemma_text})
+            lemma_links.append({
+                "word_occurrence_id": word_occurrence_id,
+                "lemma_id": lemma_id_of[lemma_text],
+            })
 
-    lemmas = [{"lemma_id": lemma_id, "text": text} for text, lemma_id in lemma_id_of.items()]
+    return words, new_lemmas, lemma_links, fallback_count
+
+
+def main(book_id):
+    tafsir_rows, _ = build_tafsir_rows(book_id)
+
+    lemma_id_of = existing_lemmas()
+    known = len(lemma_id_of)
+    counter = next_index(lemma_id_of.values())
+
+    words, new_lemmas, lemma_links, fallback_count = build_rows(
+        tafsir_rows, lemma_id_of, counter
+    )
 
     with graph_connection() as conn:
         run_batch(conn, CREATE_WORD, words)
-        run_batch(conn, CREATE_LEMMA, lemmas)
+        run_batch(conn, CREATE_LEMMA, new_lemmas)
         run_batch(conn, LINK_LEMMA, lemma_links)
 
     print(f"TafsirWordOccurrence: {len(words)} nodes + PART_OF_TAFSIR")
-    print(f"TafsirLemma: {len(lemmas)} nodes, HAS_LEMMA: {len(lemma_links)} edges")
-    print(f"blocks using per-word lemmatize fallback: {fallback_count}/{len(tafsir_rows)}")
-
-
-if __name__ == "__main__":
-    main()
+    print(f"TafsirLemma: {len(new_lemmas)} new (reused {known}), "
+          f"HAS_TAFSIR_LEMMA: {len(lemma_links)} edges")
+    print(f"blocks using per-word fallback: {fallback_count}/{len(tafsir_rows)}")
