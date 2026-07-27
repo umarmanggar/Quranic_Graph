@@ -30,6 +30,14 @@ LABELS = [
 ]
 
 
+def confirm_rebuild(total_nodes):
+    answer = input(
+        f"  Graph '{GRAPH}' sudah ada, berisi {total_nodes:,} node. "
+        f"Hapus semua dan bangun ulang dari kosong? [y/N]: "
+    ).strip().lower()
+    return answer in ("y", "yes")
+
+
 def main():
     with psycopg.connect(_dsn()) as conn:
         conn.autocommit = True
@@ -37,9 +45,16 @@ def main():
             cur.execute('SET search_path = ag_catalog, "$user", public;')
             cur.execute("SELECT count(*) FROM ag_graph WHERE name = %s;", (GRAPH,))
             exists = cur.fetchone()[0] > 0
+
             if exists:
+                cur.execute(f"SELECT * FROM cypher('{GRAPH}', $$ MATCH (n) RETURN count(n) $$) AS (v agtype);")
+                total_nodes = int(str(cur.fetchone()[0]))
+                if not confirm_rebuild(total_nodes):
+                    print(f"  Dibatalkan -- graph '{GRAPH}' tidak diubah.")
+                    sys.exit(0)
                 print(f"  drop_graph({GRAPH})...", flush=True)
                 cur.execute("SELECT drop_graph(%s, true);", (GRAPH,))
+
             print(f"  create_graph({GRAPH})...", flush=True)
             cur.execute("SELECT create_graph(%s);", (GRAPH,))
     print(f"graph {GRAPH} dibuat ulang dari kosong")
