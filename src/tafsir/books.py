@@ -15,4 +15,12 @@ BOOKS = {
             "english": "tafsir/tafsir-al-jalalayn.db",
         },
     },
+    "tafsir_ibnu_katsir": {
+        "title": "Tafsir Ibnu Katsir",
+        "prefix": "ibnu_katsir",
+        "sources": {
+            "arabic": "tafsir/ar-tafsir-ibn-kathir.db",
+            "english": "tafsir/en-tafisr-ibn-kathir.db",
+        },
+    },
 }
