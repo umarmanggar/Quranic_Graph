@@ -13,6 +13,7 @@ import setup
 import surah_ayah
 import koleksi_bab_hadith
 import book_tafsir
+import hadith_tafsir
 import lemma_root
 import wordoccurrence_quran
 import wordoccurrence_tafsir
@@ -20,7 +21,7 @@ import wordoccurrence_hadith
 import verify
 
 STEPS = [
-    setup, surah_ayah, koleksi_bab_hadith, book_tafsir, lemma_root,
+    setup, surah_ayah, koleksi_bab_hadith, book_tafsir, hadith_tafsir, lemma_root,
     wordoccurrence_quran, wordoccurrence_tafsir, wordoccurrence_hadith, verify,
 ]
 

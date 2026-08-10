@@ -12,7 +12,7 @@ from db import graph_connection, count, DEFAULT_GRAPH
 
 NODES = ["Surah", "Ayah", "Translation", "Koleksi", "Bab", "Hadith",
          "Book", "Tafsir", "WordOccurrence", "Lemma", "Root"]
-EDGES = ["PART_OF", "HAS_TRANSLATION", "PART_OF_BOOK", "INTERPRETS",
+EDGES = ["PART_OF", "HAS_TRANSLATION", "PART_OF_BOOK", "INTERPRETS", "RELATED_HADITH",
          "OCCURS_IN", "HAS_LEMMA", "HAS_CANDIDATE", "HAS_ROOT"]
 
 EXPECTED_EXACT = {
