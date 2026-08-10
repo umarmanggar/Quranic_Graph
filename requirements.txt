@@ -3,3 +3,5 @@ python-dotenv
 beautifulsoup4
 qalsadi
 tqdm
+pandas
+pyarrow
