@@ -33,26 +33,21 @@ CREATE (t)-[:INTERPRETS]->(a)
 
 def main():
     with graph_connection() as conn:
-        books = cypher_rows(conn, "quran_kg", "MATCH (b:Book) RETURN b.book_id, b.title",
-            ["book_id", "title"], desc="Book")
-
         tafsirs = cypher_rows(conn, "quran_kg",
-            "MATCH (t:Tafsir)-[:PART_OF_BOOK]->(b:Book) "
+            "MATCH (t:Tafsir {book_id:'tafsir_ibnu_katsir'})-[:PART_OF_BOOK]->(b:Book) "
             "RETURN t.tafsir_id, t.text_arabic, t.text_indonesia, t.text_english, b.book_id",
             ["tafsir_id", "text_arabic", "text_indonesia", "text_english", "book_id"], desc="Tafsir")
 
         interprets = cypher_rows(conn, "quran_kg",
-            "MATCH (t:Tafsir)-[:INTERPRETS]->(a:Ayah) RETURN t.tafsir_id, a.verse_key",
+            "MATCH (t:Tafsir {book_id:'tafsir_ibnu_katsir'})-[:INTERPRETS]->(a:Ayah) RETURN t.tafsir_id, a.verse_key",
             ["tafsir_id", "verse_key"], desc="INTERPRETS")
 
-        print("  menulis Book...", flush=True)
-        run_batch(conn, CREATE_BOOK, books)
         print("  menulis Tafsir + PART_OF_BOOK...", flush=True)
         run_batch(conn, CREATE_TAFSIR, tafsirs)
         print("  menulis INTERPRETS...", flush=True)
         run_batch(conn, LINK_INTERPRETS, interprets)
 
-    print(f"Book: {len(books)} nodes, Tafsir: {len(tafsirs)} nodes + PART_OF_BOOK, INTERPRETS: {len(interprets)} edges")
+    print(f"Tafsir: {len(tafsirs)} nodes + PART_OF_BOOK, INTERPRETS: {len(interprets)} edges")
 
 
 if __name__ == "__main__":

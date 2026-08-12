@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 load_dotenv()
 
-GRAPH = "quran_kg"
+GRAPH = "islamic_kg"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 

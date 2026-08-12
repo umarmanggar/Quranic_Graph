@@ -31,7 +31,7 @@ CREATE (w)-[:HAS_LEMMA {rank: row.rank, frequency: row.frequency}]->(l)
 def main():
     with graph_connection() as conn:
         words_raw = cypher_rows(conn, "quran_kg",
-            "MATCH (w:TafsirWordOccurrence)-[:PART_OF_TAFSIR]->(t:Tafsir) "
+            "MATCH (w:TafsirWordOccurrence)-[:PART_OF_TAFSIR]->(t:Tafsir {book_id:'tafsir_ibnu_katsir'}) "
             "RETURN w.word_occurrence_id, w.position_in_tafsir, w.surface_form, t.tafsir_id",
             ["word_occurrence_id", "position_in_tafsir", "surface_form", "tafsir_id"],
             desc="TafsirWordOccurrence")
@@ -46,7 +46,8 @@ def main():
             "lemma_id", "text")
 
         lemma_links_raw = cypher_rows(conn, "quran_kg",
-            "MATCH (w:TafsirWordOccurrence)-[:HAS_TAFSIR_LEMMA]->(l:TafsirLemma) RETURN w.word_occurrence_id, l.lemma_id",
+            "MATCH (w:TafsirWordOccurrence)-[:PART_OF_TAFSIR]->(t:Tafsir {book_id:'tafsir_ibnu_katsir'}) "
+            "MATCH (w)-[:HAS_TAFSIR_LEMMA]->(l:TafsirLemma) RETURN w.word_occurrence_id, l.lemma_id",
             ["word_occurrence_id", "lemma_id"], desc="TafsirWordOccurrence-HAS_TAFSIR_LEMMA")
         lemma_links = [{
             "location": r["word_occurrence_id"], "lemma_id": tafsir_lemma_id_to_new[r["lemma_id"]],
