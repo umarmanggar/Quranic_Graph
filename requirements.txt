@@ -5,3 +5,8 @@ qalsadi
 tqdm
 pandas
 pyarrow
+# src/similarity/ (edge :isSimilar)
+openai
+tiktoken
+faiss-cpu
+numpy
